@@ -1,5 +1,5 @@
 import { INITIAL_PRODUCTS_SEED } from '@/constants/initial-products-data';
-import { getProducts, createAppointmentApi, registerCustomerApi } from '@/services/api';
+import { getProducts, createAppointmentApi, registerCustomerApi, loginApi, registerApi, BASE_URL } from '@/services/api';
 import { useCart } from '@/context/cart-context';
 import { useCategory } from '@/context/category-context';
 import { useProduct } from '@/context/product-context';
@@ -33,12 +33,9 @@ import {
 import HeroBanner from '@/components/hero-banner';
 
 // ============================================================
-// URL API MYSQL / PHP
+// URL API MYSQL / PHP (TỰ ĐỘNG THEO IP MẠNG LAN / WEB)
 // ============================================================
-const API_URL =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api/get_products.php'
-    : 'http://192.168.1.8/petcare-api/get_products.php';
+const API_URL = `${BASE_URL}/get_products.php`;
 
 // ============================================================
 // HÌNH ẢNH BAO BÌ THỨC ĂN THỰC TẾ
@@ -231,28 +228,28 @@ export default function HomeScreen() {
     router.push(`/detail?id=${product.id}`);
   };
 
-  const handleLoginSubmit = () => {
-    const u = authEmail.trim().toLowerCase();
+  const handleLoginSubmit = async () => {
+    const u = authEmail.trim();
     const p = authPassword.trim();
     if (!u || !p) {
       showToast('Vui lòng nhập tài khoản và mật khẩu');
       return;
     }
-    if (u === 'admin' && p === '123') {
-      setCurrentUser({ name: 'Quản Trị Viên', email: 'admin@petcare.vn' });
+    const res = await loginApi({ username: u, password: p });
+    if (res.success && res.user) {
+      setCurrentUser({ name: res.user.name, email: res.user.email || u, phone: res.user.phone });
       setIsLoggedIn(true);
       setShowAuthModal(false);
-      showToast('Đăng nhập Quản Trị Viên thành công!');
-      router.push('/admin');
-      return;
+      showToast(res.message || 'Đăng nhập thành công!');
+      if (res.user.type === 'admin') {
+        router.push('/admin');
+      }
+    } else {
+      showToast(res.message || 'Tài khoản hoặc mật khẩu không chính xác!');
     }
-    setCurrentUser({ name: u.includes('@') ? u.split('@')[0] : u, email: u });
-    setIsLoggedIn(true);
-    setShowAuthModal(false);
-    showToast('Đăng nhập thành công!');
   };
 
-  const handleRegisterSubmit = () => {
+  const handleRegisterSubmit = async () => {
     const name = regName.trim();
     const phone = regPhone.trim();
     const email = regEmail.trim();
@@ -284,16 +281,20 @@ export default function HomeScreen() {
       return;
     }
 
-    setCurrentUser({ name, email, phone });
-    setIsLoggedIn(true);
-    setShowAuthModal(false);
-    showToast(`🎉 Đăng ký thành công! Chào mừng ${name}!`);
-    registerCustomerApi({ name, phone, email }).catch((err) => console.warn(err));
-    setRegName('');
-    setRegPhone('');
-    setRegEmail('');
-    setRegPassword('');
-    setRegConfirmPassword('');
+    const res = await registerApi({ name, phone, email, password: pass });
+    if (res.success && res.user) {
+      setCurrentUser({ name, email, phone });
+      setIsLoggedIn(true);
+      setShowAuthModal(false);
+      showToast(`🎉 ${res.message || 'Đăng ký thành công!'}`);
+      setRegName('');
+      setRegPhone('');
+      setRegEmail('');
+      setRegPassword('');
+      setRegConfirmPassword('');
+    } else {
+      showToast(res.message || 'Đăng ký không thành công, vui lòng thử lại!');
+    }
   };
 
   const handleBookingSubmit = () => {

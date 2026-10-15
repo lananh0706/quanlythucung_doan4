@@ -108,10 +108,8 @@ const BLOG_POSTS: BlogPost[] = [
   },
 ];
 
-const API_EXTRA =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api/get_admin_extra.php'
-    : 'http://192.168.1.8/petcare-api/get_admin_extra.php';
+import { BASE_URL } from '@/services/api';
+const API_EXTRA = `${BASE_URL}/get_admin_extra.php`;
 
 export default function BlogScreen() {
   const router = useRouter();

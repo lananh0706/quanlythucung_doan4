@@ -15,13 +15,11 @@ import { useRouter } from 'expo-router';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useCart, Order } from '@/context/cart-context';
 import { OrdersIcon, TruckIcon } from '@/components/icons';
+import { BASE_URL } from '@/services/api';
 
 const STEPS = ['Đã đặt', 'Đóng gói', 'Đang giao', 'Đã nhận'];
 
-const API_ORDERS =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api/get_admin_orders.php'
-    : 'http://192.168.1.8/petcare-api/get_admin_orders.php';
+const API_ORDERS = `${BASE_URL}/get_admin_orders.php`;
 
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();

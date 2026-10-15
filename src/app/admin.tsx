@@ -866,12 +866,10 @@ const getModalEntityTitle = (type: EntityType | null): string => {
 };
 
 // ============================================================
-// CẤU HÌNH API PHP / MYSQL XAMPP
+// CẤU HÌNH API PHP / MYSQL XAMPP (TỰ ĐỘNG THEO HOST / IP LAN)
 // ============================================================
-const API_BASE =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api'
-    : 'http://192.168.1.8/petcare-api';
+import { BASE_URL } from '@/services/api';
+const API_BASE = BASE_URL;
 
 
 

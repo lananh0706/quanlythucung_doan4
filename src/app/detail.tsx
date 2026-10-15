@@ -26,11 +26,9 @@ import {
   CloseIcon,
   StarIcon,
 } from '@/components/icons';
+import { BASE_URL } from '@/services/api';
 
-const API_DETAIL_URL =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api/get_product_detail.php'
-    : 'http://192.168.1.8/petcare-api/get_product_detail.php';
+const API_DETAIL_URL = `${BASE_URL}/get_product_detail.php`;
 
 export default function DetailScreen() {
   const { id } = useLocalSearchParams();

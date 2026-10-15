@@ -444,6 +444,63 @@ app.delete('/api/shifts/:id', (req, res) => {
     });
 });
 
+// ==========================================
+// 12. APIS XÁC THỰC & ĐĂNG NHẬP (AUTH APIS)
+// ==========================================
+app.post('/api/auth/login', (req, res) => {
+    const username = (req.body.username || req.body.email || req.body.account || '').trim();
+    const password = (req.body.password || '').trim();
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, message: 'Vui lòng nhập tài khoản và mật khẩu!' });
+    }
+
+    // 1. Kiểm tra Admin
+    db.query('SELECT id, username, password, full_name, email, role, status FROM admins WHERE (username = ? OR email = ?) LIMIT 1', [username, username], (errAdmin, adminRows) => {
+        if (errAdmin) return res.status(500).json({ success: false, message: errAdmin.message });
+        if (adminRows && adminRows.length > 0) {
+            const admin = adminRows[0];
+            if (admin.status === 'locked') {
+                return res.json({ success: false, message: 'Tài khoản quản trị viên đã bị khóa!' });
+            }
+            if (password === admin.password) {
+                db.query('UPDATE admins SET last_login = NOW() WHERE id = ?', [admin.id]);
+                const payload = { sub: admin.id, name: admin.full_name, role: admin.role, type: 'admin', iat: Date.now() };
+                const token = 'PETCARE_BEARER_' + Buffer.from(JSON.stringify(payload)).toString('base64');
+                return res.json({
+                    success: true,
+                    message: 'Đăng nhập Quản trị viên thành công!',
+                    token,
+                    user: { id: admin.id, username: admin.username, name: admin.full_name, email: admin.email, role: admin.role, type: 'admin' }
+                });
+            }
+        }
+
+        // 2. Kiểm tra Khách hàng
+        db.query('SELECT id, customer_code, name, email, phone, password, membership_rank, pet_xu, status FROM customers WHERE (phone = ? OR email = ?) LIMIT 1', [username, username], (errCust, custRows) => {
+            if (errCust) return res.status(500).json({ success: false, message: errCust.message });
+            if (custRows && custRows.length > 0) {
+                const cust = custRows[0];
+                if (cust.status === 'blocked') {
+                    return res.json({ success: false, message: 'Tài khoản khách hàng đã bị tạm khóa!' });
+                }
+                if (password === cust.password) {
+                    const payload = { sub: cust.id, name: cust.name, phone: cust.phone, type: 'customer', iat: Date.now() };
+                    const token = 'PETCARE_BEARER_' + Buffer.from(JSON.stringify(payload)).toString('base64');
+                    return res.json({
+                        success: true,
+                        message: 'Đăng nhập thành công!',
+                        token,
+                        user: { id: cust.id, code: cust.customer_code, name: cust.name, email: cust.email, phone: cust.phone, membershipRank: cust.membership_rank, petXu: cust.pet_xu, type: 'customer' }
+                    });
+                }
+            }
+
+            return res.json({ success: false, message: 'Tài khoản hoặc mật khẩu không chính xác!' });
+        });
+    });
+});
+
 // Khởi động server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 PetCare Server đang chạy tại: http://localhost:${PORT}`);

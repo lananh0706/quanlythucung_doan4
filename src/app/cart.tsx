@@ -31,11 +31,9 @@ import {
   WardItem,
   CountryItem,
 } from '@/constants/vietnam-addresses';
+import { BASE_URL } from '@/services/api';
 
-const API_CREATE_ORDER =
-  Platform.OS === 'web'
-    ? 'http://localhost/petcare-api/create_order.php'
-    : 'http://192.168.1.8/petcare-api/create_order.php';
+const API_CREATE_ORDER = `${BASE_URL}/create_order.php`;
 
 type PaymentMethodType = 'COD' | 'BANK' | 'MOMO';
 type ShippingMethodType = 'standard' | 'express';
