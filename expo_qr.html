@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mã QR kết nối Expo Go - PetCare App</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 32px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 22px;
+      color: #38bdf8;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .qr-container {
+      background: white;
+      padding: 16px;
+      border-radius: 16px;
+      display: inline-block;
+      margin: 16px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .badge {
+      display: inline-block;
+      background: #0369a1;
+      color: #e0f2fe;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      margin-bottom: 12px;
+    }
+    .url-box {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: monospace;
+      color: #38bdf8;
+      font-size: 14px;
+      word-break: break-all;
+      margin-top: 12px;
+    }
+    .instructions {
+      text-align: left;
+      font-size: 13px;
+      color: #cbd5e1;
+      margin-top: 20px;
+      border-top: 1px solid #334155;
+      padding-top: 16px;
+    }
+    .instructions li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">EXPO GO DEV SERVER</div>
+    <h1>📱 Quét Mã Để Chạy App</h1>
+    <p>Mở ứng dụng <strong>Expo Go</strong> trên điện thoại (cùng mạng Wi-Fi) và quét mã bên dưới:</p>
+    
+    <div class="qr-container">
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 330 330' width='260' height='260'><rect width='100%' height='100%' fill='%23ffffff'/><path d='M40 40h70v70h-70zM50 50v50h50v-50zM60 60h30v30h-30zM220 40h70v70h-70zM230 50v50h50v-50zM240 60h30v30h-30zM40 220h70v70h-70zM50 230v50h50v-50zM60 240h30v30h-30z' fill='%23000000'/></svg>" id="qrImg" alt="Expo QR Code" style="width:260px; height:260px;" />
+    </div>
+
+    <div class="url-box" id="urlBox">exp://192.168.1.8:8081</div>
+
+    <div class="instructions">
+      <strong>💡 Hướng dẫn kết nối:</strong>
+      <ul>
+        <li><strong>Android:</strong> Mở ứng dụng <em>Expo Go</em> ➔ Chọn <em>Scan QR code</em>.</li>
+        <li><strong>iOS (iPhone):</strong> Mở app <em>Camera (Máy ảnh)</em> ➔ Hướng vào mã QR ➔ Bấm thông báo mở bằng <em>Expo Go</em>.</li>
+        <li><strong>Máy tính (Trình duyệt):</strong> Truy cập <a href="http://localhost:8081" target="_blank" style="color:#38bdf8;">http://localhost:8081</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // Load full SVG dynamically
+    fetch('expo_qr.svg')
+      .then(res => res.text())
+      .then(svgText => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(svgText, 'image/svg+xml');
+        const svgEl = doc.querySelector('svg');
+        if (svgEl) {
+          const container = document.querySelector('.qr-container');
+          container.innerHTML = '';
+          container.appendChild(svgEl);
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
