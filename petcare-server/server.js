@@ -178,16 +178,30 @@ app.post('/api/orders', (req, res) => {
                 (it.price || 0) * (it.quantity || 1)
             ]);
             const itemSql = 'INSERT INTO order_items (order_id, product_id, product_name, product_image, packaging, price, quantity, total_price) VALUES ?';
-            db.query(itemSql, [itemValues], () => {});
+            db.query(itemSql, [itemValues], () => {
+                // Tự động trừ kho & tăng lượt bán trong products
+                items.forEach(it => {
+                    const pId = it.id || 0;
+                    const pQty = it.quantity || 1;
+                    if (pId > 0) {
+                        db.query('UPDATE products SET stock = GREATEST(0, stock - ?), sold_count = sold_count + ?, in_stock = IF(stock - ? <= 0, 0, 1) WHERE id = ?', [pQty, pQty, pQty, pId]);
+                    }
+                });
+            });
         }
+
+        // Tích lũy điểm PetXu & doanh số khách hàng
+        const xuEarned = Math.floor(total_amount / 10000);
+        db.query('UPDATE customers SET orders_count = orders_count + 1, total_spent = total_spent + ?, pet_xu = pet_xu + ? WHERE phone = ?', [total_amount, xuEarned, customer_phone]);
 
         res.json({
             success: true,
-            message: 'Tạo đơn hàng thành công!',
+            message: 'Tạo đơn hàng thành công! Đã tự động cập nhật tồn kho và tích điểm PetXu.',
             data: {
                 id: orderId,
                 order_code: orderCode,
-                total_amount
+                total_amount,
+                xu_earned: xuEarned
             }
         });
     });
@@ -202,10 +216,28 @@ app.put('/api/orders/:id/status', (req, res) => {
         return res.status(400).json({ success: false, message: 'Thiếu trạng thái cập nhật!' });
     }
 
-    db.query('UPDATE orders SET status = ? WHERE id = ?', [status, id], (err, result) => {
-        if (err) return res.status(500).json({ success: false, message: err.message });
-        if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng!' });
-        res.json({ success: true, message: 'Đã cập nhật trạng thái đơn hàng thành công!' });
+    db.query('SELECT status FROM orders WHERE id = ? LIMIT 1', [id], (errCheck, orderRows) => {
+        const prevStatus = (orderRows && orderRows.length > 0) ? orderRows[0].status : '';
+
+        db.query('UPDATE orders SET status = ? WHERE id = ?', [status, id], (err, result) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            if (result.affectedRows === 0) return res.status(404).json({ success: false, message: 'Không tìm thấy đơn hàng!' });
+
+            // Tự động hoàn kho nếu hủy đơn hàng
+            if (status === 'cancelled' && prevStatus !== 'cancelled') {
+                db.query('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [id], (errItems, items) => {
+                    if (!errItems && items) {
+                        items.forEach(it => {
+                            if (it.product_id && it.quantity > 0) {
+                                db.query('UPDATE products SET stock = stock + ?, sold_count = GREATEST(0, sold_count - ?), in_stock = 1 WHERE id = ?', [it.quantity, it.quantity, it.product_id]);
+                            }
+                        });
+                    }
+                });
+            }
+
+            res.json({ success: true, message: 'Đã cập nhật trạng thái đơn hàng thành công!' + (status === 'cancelled' ? ' Đã tự động hoàn trả số lượng hàng vào kho.' : '') });
+        });
     });
 });
 

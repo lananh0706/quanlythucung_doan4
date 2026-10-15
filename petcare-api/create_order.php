@@ -16,6 +16,7 @@ $payment_method = trim($input['payment_method'] ?? 'COD');
 $items = $input['items'] ?? [];
 
 if (empty($customer_name) || empty($customer_phone) || empty($customer_address) || $total_amount <= 0) {
+    http_response_code(400);
     echo json_encode(["success" => false, "message" => "Vui lòng cung cấp đầy đủ họ tên, số điện thoại, địa chỉ và tổng tiền hợp lệ!"]);
     exit();
 }
@@ -27,15 +28,18 @@ $items_json = !empty($items) ? json_encode($items, JSON_UNESCAPED_UNICODE) : nul
 $conn->begin_transaction();
 
 try {
+    // 1. Lưu thông tin đơn hàng
     $stmt = $conn->prepare("INSERT INTO orders (order_code, customer_name, customer_phone, customer_address, customer_note, shipping_method, shipping_fee, voucher_code, discount_amount, total_amount, payment_method, status, items_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->bind_param("ssssssisiisss", $order_code, $customer_name, $customer_phone, $customer_address, $customer_note, $shipping_method, $shipping_fee, $voucher_code, $discount_amount, $total_amount, $payment_method, $status, $items_json);
     $stmt->execute();
     $order_id = $stmt->insert_id;
     $stmt->close();
 
-    // Thêm các món hàng vào order_items nếu có
+    // 2. Thêm các món hàng vào order_items & TỰ ĐỘNG TRỪ TỒN KHO TRONG PRODUCTS
     if (!empty($items) && is_array($items)) {
         $stmt_item = $conn->prepare("INSERT INTO order_items (order_id, product_id, product_name, packaging, price, quantity, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt_stock = $conn->prepare("UPDATE products SET stock = GREATEST(0, stock - ?), sold_count = sold_count + ?, in_stock = IF(stock - ? <= 0, 0, 1) WHERE id = ?");
+
         foreach ($items as $it) {
             $prod_id = (int)($it['id'] ?? 0);
             $prod_name = $it['name'] ?? 'Sản phẩm';
@@ -43,20 +47,45 @@ try {
             $price = (int)($it['price'] ?? 0);
             $qty = (int)($it['quantity'] ?? 1);
             $total_price = $price * $qty;
+            
+            // Lưu chi tiết đơn hàng
             $stmt_item->bind_param("iissiii", $order_id, $prod_id, $prod_name, $packaging, $price, $qty, $total_price);
             $stmt_item->execute();
+
+            // Trừ tồn kho và tăng số lượng bán
+            if ($prod_id > 0) {
+                $stmt_stock->bind_param("iiii", $qty, $qty, $qty, $prod_id);
+                $stmt_stock->execute();
+            }
         }
         $stmt_item->close();
+        $stmt_stock->close();
+    }
+
+    // 3. TÍCH LŨY DOANH SỐ & ĐIỂM THƯỞNG PETXU CHO KHÁCH HÀNG
+    $xu_earned = (int)floor($total_amount / 10000); // Cứ 10.000đ tích 1 điểm PetXu
+    $upd_cust = $conn->prepare("UPDATE customers SET orders_count = orders_count + 1, total_spent = total_spent + ?, pet_xu = pet_xu + ? WHERE phone = ?");
+    $upd_cust->bind_param("iis", $total_amount, $xu_earned, $customer_phone);
+    $upd_cust->execute();
+    $upd_cust->close();
+
+    // 4. CẬP NHẬT SỐ LƯỢT SỬ DỤNG VOUCHER NẾU CÓ
+    if (!empty($voucher_code)) {
+        $upd_voucher = $conn->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE code = ?");
+        $upd_voucher->bind_param("s", $voucher_code);
+        $upd_voucher->execute();
+        $upd_voucher->close();
     }
 
     $conn->commit();
     echo json_encode([
         "success" => true,
-        "message" => "Đặt hàng thành công!",
+        "message" => "Đặt hàng thành công! Đã tự động cập nhật tồn kho và tích điểm PetXu.",
         "data" => [
             "order_id" => $order_id,
             "order_code" => $order_code,
-            "total_amount" => $total_amount
+            "total_amount" => $total_amount,
+            "xu_earned" => $xu_earned
         ]
     ], JSON_UNESCAPED_UNICODE);
 } catch (Exception $e) {
