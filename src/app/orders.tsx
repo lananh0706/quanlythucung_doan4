@@ -16,6 +16,7 @@ import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useCart, Order } from '@/context/cart-context';
 import { OrdersIcon, TruckIcon } from '@/components/icons';
 import { BASE_URL } from '@/services/api';
+import InvoiceModal, { InvoiceData } from '@/components/invoice-modal';
 
 const STEPS = ['Đã đặt', 'Đóng gói', 'Đang giao', 'Đã nhận'];
 
@@ -28,6 +29,8 @@ export default function OrdersScreen() {
 
   const [dbOrders, setDbOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'all' | 'delivering' | 'completed'>('all');
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
 
   React.useEffect(() => {
     fetch(API_ORDERS)
@@ -85,6 +88,27 @@ export default function OrdersScreen() {
       Alert.alert('Mua lại', `Đã chuyển đến giỏ hàng để mua lại đơn #${orderId}!`);
     }
     router.push('/cart');
+  };
+
+  const handleOpenInvoice = (order: Order) => {
+    setSelectedInvoice({
+      orderCode: String(order.id).startsWith('#') ? String(order.id) : `#${order.id}`,
+      date: order.orderDate,
+      customerName: 'Khách hàng PetCare VIP',
+      customerPhone: '0982.112.233',
+      customerAddress: '120 Cầu Giấy, P. Quan Hoa, Q. Cầu Giấy, Hà Nội',
+      paymentMethod: 'Chuyển khoản VietQR / COD',
+      totalAmount: order.totalAmount,
+      items: order.items && order.items.length > 0 ? order.items.map((it: any) => ({
+        name: it.name,
+        quantity: it.quantity || 1,
+        price: it.price,
+        packaging: 'Gói tiêu chuẩn',
+      })) : [
+        { name: 'Thức ăn dinh dưỡng thú cưng PetCare', quantity: 1, price: order.totalAmount, packaging: 'Gói tiêu chuẩn' }
+      ],
+    });
+    setShowInvoiceModal(true);
   };
 
   const bottomInset = insets.bottom + BottomTabInset + Spacing.four;
@@ -245,17 +269,31 @@ export default function OrdersScreen() {
                       <Text style={styles.totalPrompt}>Tổng thanh toán</Text>
                       <Text style={styles.totalAmount}>{order.totalAmount}</Text>
                     </View>
-                    <Pressable
-                      onPress={() => handleReorder(order.id)}
-                      style={styles.reorderBtn}>
-                      <Text style={styles.reorderBtnText}>Mua lại đơn</Text>
-                    </Pressable>
+                    <View style={styles.orderActionsRow}>
+                      <Pressable
+                        onPress={() => handleOpenInvoice(order)}
+                        style={styles.invoiceBtn}>
+                        <Text style={styles.invoiceBtnText}>🧾 In hóa đơn</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => handleReorder(order.id)}
+                        style={styles.reorderBtn}>
+                        <Text style={styles.reorderBtnText}>Mua lại đơn</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               ))
             )}
           </View>
         </ScrollView>
+
+        {/* MODAL IN HÓA ĐƠN BÁN HÀNG */}
+        <InvoiceModal
+          visible={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          invoice={selectedInvoice}
+        />
       </SafeAreaView>
     </View>
   );
@@ -513,6 +551,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#DC2626',
     marginTop: 2,
+  },
+  orderActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  invoiceBtn: {
+    backgroundColor: '#F0F9FF',
+    borderWidth: 1,
+    borderColor: '#0284C7',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  invoiceBtnText: {
+    color: '#0284C7',
+    fontSize: 12,
+    fontWeight: '700',
   },
   reorderBtn: {
     backgroundColor: '#0EA5E9',

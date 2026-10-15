@@ -22,6 +22,8 @@ import {
   TopProductsAndWarehouseSection,
   PieSlice,
 } from '@/components/admin-charts';
+import InvoiceModal, { InvoiceData } from '@/components/invoice-modal';
+import { exportOrdersToExcel, exportInventoryToExcel } from '@/utils/exportExcel';
 
 function formatNumberVi(val: any): string {
   if (val === undefined || val === null) return '0';
@@ -1170,6 +1172,31 @@ export default function AdminScreen() {
   // Tab điều hướng
   const [activeTab, setActiveTab] = useState<AdminNavTab>('products');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Hóa đơn điện tử & Xuất in
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+
+  const handleOpenAdminInvoice = (ord: any) => {
+    setSelectedInvoice({
+      orderCode: ord.code || `#PET-${ord.id}`,
+      date: new Date().toLocaleDateString('vi-VN'),
+      customerName: ord.customerName || 'Khách hàng',
+      customerPhone: ord.phone || '0982.xxx.xxx',
+      customerAddress: ord.address || 'Giao tại địa chỉ khách hàng',
+      paymentMethod: ord.paymentMethod || 'Chuyển khoản VietQR / COD',
+      totalAmount: ord.totalPrice || 0,
+      items: [
+        {
+          name: `Sản phẩm theo đơn hàng ${ord.code || ord.id}`,
+          quantity: 1,
+          price: ord.totalPrice || 0,
+          packaging: 'Gói tiêu chuẩn',
+        },
+      ],
+    });
+    setShowInvoiceModal(true);
+  };
 
   // Bộ lọc & tìm kiếm riêng cho Quản lý Sản phẩm
   const [productSearch, setProductSearch] = useState('');
@@ -5447,12 +5474,20 @@ export default function AdminScreen() {
                 <View style={styles.panelCard}>
                   <View style={styles.panelHeaderRow}>
                     <Text style={styles.panelTitleNoBorder}>Quản Lý Tồn Kho & Kệ Hàng ({inventory.length} mặt hàng)</Text>
-                    <TouchableOpacity
-                      style={styles.btnActionSmallPrimary}
-                      onPress={() => openModal('inventory')}
-                    >
-                      <Text style={styles.btnActionSmallPrimaryText}>+ Nhập Hàng Kho</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[styles.btnActionSmallPrimary, { backgroundColor: '#16A34A' }]}
+                        onPress={() => exportInventoryToExcel(inventory)}
+                      >
+                        <Text style={styles.btnActionSmallPrimaryText}>📥 Xuất Excel Kho</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.btnActionSmallPrimary}
+                        onPress={() => openModal('inventory')}
+                      >
+                        <Text style={styles.btnActionSmallPrimaryText}>+ Nhập Hàng Kho</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   {inventory.map((inv) => (
                     <View key={inv.id} style={styles.listItemRow}>
@@ -5543,12 +5578,20 @@ export default function AdminScreen() {
                 <View style={styles.panelCard}>
                   <View style={styles.panelHeaderRow}>
                     <Text style={styles.panelTitleNoBorder}>Quản Lý Đơn Đặt Hàng ({orders.length} đơn)</Text>
-                    <TouchableOpacity
-                      style={styles.btnActionSmallPrimary}
-                      onPress={() => openModal('order')}
-                    >
-                      <Text style={styles.btnActionSmallPrimaryText}>+ Tạo Đơn Mới</Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[styles.btnActionSmallPrimary, { backgroundColor: '#16A34A' }]}
+                        onPress={() => exportOrdersToExcel(orders)}
+                      >
+                        <Text style={styles.btnActionSmallPrimaryText}>📥 Xuất Excel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.btnActionSmallPrimary}
+                        onPress={() => openModal('order')}
+                      >
+                        <Text style={styles.btnActionSmallPrimaryText}>+ Tạo Đơn Mới</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   {orders.map((ord) => (
                     <View key={ord.id} style={styles.listItemRow}>
@@ -5560,6 +5603,14 @@ export default function AdminScreen() {
                         </Text>
                       </View>
                       <View style={styles.rowActionsGroup}>
+                        <TouchableOpacity
+                          style={[styles.btnActionSmall, { backgroundColor: '#E0F2FE' }]}
+                          onPress={() => handleOpenAdminInvoice(ord)}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#0284C7' }}>
+                            🧾 In Hóa Đơn
+                          </Text>
+                        </TouchableOpacity>
                         <TouchableOpacity
                           style={[styles.btnActionSmall, { backgroundColor: '#FEF3C7' }]}
                           onPress={() => cycleOrderStatus(ord.id)}
@@ -6688,6 +6739,13 @@ export default function AdminScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* MODAL IN HÓA ĐƠN BÁN HÀNG CHO ADMIN */}
+      <InvoiceModal
+        visible={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        invoice={selectedInvoice}
+      />
     </SafeAreaView>
   );
 }
