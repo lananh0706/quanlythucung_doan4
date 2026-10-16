@@ -27,7 +27,7 @@ export const getBaseUrl = (): string => {
   }
 
   // Fallback IP khi offline hoặc môi trường độc lập
-  return 'http://192.168.1.10/petcare-api';
+  return 'http://192.168.0.127/petcare-api';
 };
 
 export const BASE_URL = getBaseUrl();
